@@ -9,7 +9,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-// DirFilter ...
+// DirFilter is a function to filter folder to watch
 type DirFilter func(path string, info os.FileInfo) bool
 
 // Watcher wraps fsnotify.Watcher. When fsnotify adds recursive watches, you should be able to switch your code to use fsnotify.Watcher
@@ -59,7 +59,7 @@ func (w *Watcher) AddRecursive(name string, dirFilter DirFilter) error {
 	return nil
 }
 
-// Remove stops watching the the named file or directory (non-recursively).
+// Remove stops watching the named file or directory (non-recursively).
 func (w *Watcher) Remove(name string) error {
 	return w.fsnotify.Remove(name)
 }
