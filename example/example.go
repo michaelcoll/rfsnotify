@@ -11,7 +11,7 @@ import (
 func main() {
 
 	fmt.Println("Creating watcher ...")
-	watcher, err := rfsnotify.NewWatcher()
+	watcher, err := rfsnotify.NewBufferedWatcher(100)
 	if err != nil {
 		log.Fatalf("Could not create the watcher : %v", err)
 	}
@@ -40,7 +40,7 @@ func main() {
 	}
 }
 
-//dirFilter permits watch on all folder except the `.git` folder
+// dirFilter permits watch on all folder except the `.git` folder
 func dirFilter(path string, info os.FileInfo) bool {
 	return path != ".git"
 }

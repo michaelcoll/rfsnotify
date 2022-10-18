@@ -3,6 +3,7 @@ package rfsnotify
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -32,6 +33,24 @@ func NewWatcher() (*Watcher, error) {
 	w := &Watcher{}
 	w.fsnotify = fsWatch
 	w.Events = make(chan fsnotify.Event)
+	w.Errors = make(chan error)
+	w.done = make(chan struct{})
+
+	go w.start()
+
+	return w, nil
+}
+
+// NewBufferedWatcher establishes a new watcher with the underlying OS and begins waiting for events. The channel used to receive the FS events is buffered with the given size.
+func NewBufferedWatcher(bufferSize int) (*Watcher, error) {
+	fsWatch, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+
+	w := &Watcher{}
+	w.fsnotify = fsWatch
+	w.Events = make(chan fsnotify.Event, bufferSize)
 	w.Errors = make(chan error)
 	w.done = make(chan struct{})
 
@@ -90,13 +109,19 @@ func (w *Watcher) start() {
 			s, err := os.Stat(e.Name)
 			if err == nil && s != nil && s.IsDir() {
 				if e.Op&fsnotify.Create != 0 {
-					w.watchRecursive(e.Name, false, nil)
+					err := w.watchRecursive(e.Name, false, nil)
+					if err != nil {
+						fmt.Printf("Error while adding a recursive watcher on the folder %s (%v)\n", e.Name, err)
+					}
 				}
 			}
 			// Can't stat a deleted directory, so just pretend that it's always a directory and
 			// try to remove from the watch list...  we really have no clue if it's a directory or not...
 			if e.Op&fsnotify.Remove != 0 {
-				w.fsnotify.Remove(e.Name)
+				err := w.fsnotify.Remove(e.Name)
+				if err != nil && !errors.Is(err, fsnotify.ErrNonExistentWatch) {
+					fmt.Printf("Error while removing the underliying watcher (%v)\n", err)
+				}
 			}
 			w.Events <- e
 
@@ -104,7 +129,10 @@ func (w *Watcher) start() {
 			w.Errors <- e
 
 		case <-w.done:
-			w.fsnotify.Close()
+			err := w.fsnotify.Close()
+			if err != nil {
+				fmt.Printf("Error while closing the underliying watcher (%v)\n", err)
+			}
 			close(w.Events)
 			close(w.Errors)
 			return
