@@ -92,13 +92,13 @@ func (w *Watcher) RemoveRecursive(name string) error {
 }
 
 // Close removes all watches and closes the events channel.
-func (w *Watcher) Close() error {
+func (w *Watcher) Close() {
 	if w.isClosed {
-		return nil
+		return
 	}
 	close(w.done)
 	w.isClosed = true
-	return nil
+	return
 }
 
 func (w *Watcher) start() {
